@@ -19,11 +19,7 @@ uniform mat4 view;
 uniform mat4 projection;
 
 // Identificador que define qual objeto está sendo desenhado no momento
-#define SPHERE 0
-#define BUNNY  1
-#define PLANE  2
-#define CUBE 3
-#define CARRO 4
+#define CARRO 0
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -70,100 +66,19 @@ void main()
     float U = 0.0;
     float V = 0.0;
 
-    if ( object_id == SPHERE )
+    if ( object_id == CARRO)
     {
-        // PREENCHA AQUI as coordenadas de textura da esfera, computadas com
-        // projeção esférica EM COORDENADAS DO MODELO. Utilize como referência
-        // o slides 134-150 do documento Aula_20_Mapeamento_de_Texturas.pdf.
-        // A esfera que define a projeção deve estar centrada na posição
-        // "bbox_center" definida abaixo.
-
-        // Você deve utilizar:
-        //   função 'length( )' : comprimento Euclidiano de um vetor
-        //   função 'atan( , )' : arcotangente. Veja https://en.wikipedia.org/wiki/Atan2.
-        //   função 'asin( )'   : seno inverso.
-        //   constante M_PI
-        //   variável position_model
+        // Coordenadas de textura do carro, computadas com projeção planar XY em COORDENADAS DO MODELO.
 
         vec4 bbox_center = (bbox_min + bbox_max) / 2.0;
+        vec4 position_sphere = bbox_center + (position_model - bbox_center)/length(position_model - bbox_center);
+        vec4 vector_sphere = position_sphere - bbox_center;
 
-        U = 0.0;
-        V = 0.0;
-    }
-    else if ( object_id == BUNNY )
-    {
-        // PREENCHA AQUI as coordenadas de textura do coelho, computadas com
-        // projeção planar XY em COORDENADAS DO MODELO. Utilize como referência
-        // o slides 99-104 do documento Aula_20_Mapeamento_de_Texturas.pdf,
-        // e também use as variáveis min*/max* definidas abaixo para normalizar
-        // as coordenadas de textura U e V dentro do intervalo [0,1]. Para
-        // tanto, veja por exemplo o mapeamento da variável 'p_v' utilizando
-        // 'h' no slides 158-160 do documento Aula_20_Mapeamento_de_Texturas.pdf.
-        // Veja também a Questão 4 do Questionário 4 no Moodle.
+        float theta = atan(vector_sphere[0],vector_sphere[2]);
+        float phi = asin(vector_sphere[1]);
 
-        float minx = bbox_min.x;
-        float maxx = bbox_max.x;
-
-        float miny = bbox_min.y;
-        float maxy = bbox_max.y;
-
-        float minz = bbox_min.z;
-        float maxz = bbox_max.z;
-
-        U = 0.0;
-        V = 0.0;
-    }
-    else if ( object_id == PLANE )
-    {
-        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
-        U = texcoords.x;
-        V = texcoords.y;
-    }
-    else if ( object_id == CUBE)
-    {
-        // PREENCHA AQUI as coordenadas de textura do coelho, computadas com
-        // projeção planar XY em COORDENADAS DO MODELO. Utilize como referência
-        // o slides 99-104 do documento Aula_20_Mapeamento_de_Texturas.pdf,
-        // e também use as variáveis min*/max* definidas abaixo para normalizar
-        // as coordenadas de textura U e V dentro do intervalo [0,1]. Para
-        // tanto, veja por exemplo o mapeamento da variável 'p_v' utilizando
-        // 'h' no slides 158-160 do documento Aula_20_Mapeamento_de_Texturas.pdf.
-        // Veja também a Questão 4 do Questionário 4 no Moodle.
-
-        float minx = bbox_min.x;
-        float maxx = bbox_max.x;
-
-        float miny = bbox_min.y;
-        float maxy = bbox_max.y;
-
-        float minz = bbox_min.z;
-        float maxz = bbox_max.z;
-
-        U = 0.0;
-        V = 0.0;
-    }
-    else if ( object_id == CARRO)
-    {
-        // PREENCHA AQUI as coordenadas de textura do coelho, computadas com
-        // projeção planar XY em COORDENADAS DO MODELO. Utilize como referência
-        // o slides 99-104 do documento Aula_20_Mapeamento_de_Texturas.pdf,
-        // e também use as variáveis min*/max* definidas abaixo para normalizar
-        // as coordenadas de textura U e V dentro do intervalo [0,1]. Para
-        // tanto, veja por exemplo o mapeamento da variável 'p_v' utilizando
-        // 'h' no slides 158-160 do documento Aula_20_Mapeamento_de_Texturas.pdf.
-        // Veja também a Questão 4 do Questionário 4 no Moodle.
-
-        float minx = bbox_min.x;
-        float maxx = bbox_max.x;
-
-        float miny = bbox_min.y;
-        float maxy = bbox_max.y;
-
-        float minz = bbox_min.z;
-        float maxz = bbox_max.z;
-
-        U = 0.0;
-        V = 0.0;
+        U = (theta + M_PI)/(2*M_PI);
+        V = (phi + M_PI/2)/M_PI;
     }
 
     // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0

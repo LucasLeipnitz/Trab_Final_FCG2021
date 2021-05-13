@@ -183,6 +183,8 @@ GLuint g_NumLoadedTextures = 0;
 double g_LastCursorPosX, g_LastCursorPosY;
 
 #define CARRO 0
+float carro_x = 1.0, carro_y = 0.0, carro_z = 0.0, carro_angulo_z = 0.0;
+
 
 int main(int argc, char* argv[]){
 
@@ -219,7 +221,7 @@ int main(int argc, char* argv[]){
     // Criamos uma janela do sistema operacional, com 800 colunas e 600 linhas
     // de pixels, e com título "INF01047 ...".
     GLFWwindow* window;
-    window = glfwCreateWindow(800, 600, "INF01047 - Seu Cartao - Seu Nome", NULL, NULL);
+    window = glfwCreateWindow(800, 600, "INF01047 - 170313, 194980 - Emanuel Thiel, Lucas Fraga", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -261,6 +263,11 @@ int main(int argc, char* argv[]){
     // para renderização.
     //
     LoadShadersFromFiles();
+
+    // Carregamos duas imagens para serem utilizadas como textura
+    //LoadTextureImage("../../data/tc-earth_daymap_surface.jpg");      // TextureImage0
+    //LoadTextureImage("../../data/tc-earth_nightmap_citylights.gif"); // TextureImage1
+    LoadTextureImage("../../data/red.jpg"); // TextureImage0
 
     ObjModel carromodel("../../data/carro.obj");
     ComputeNormals(&carromodel);
@@ -361,7 +368,7 @@ int main(int argc, char* argv[]){
         glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
         // Desenhamos o modelo do carro
-        model = Matrix_Translate(1.0f,0.0f,0.0f)* Matrix_Scale(0.01, 0.01, 0.01) * Matrix_Rotate_X(-1.58f);
+        model = Matrix_Translate(carro_x,carro_y,carro_z)* Matrix_Scale(0.01, 0.01, 0.01) * Matrix_Rotate_X(-1.58f) * Matrix_Rotate_Z(carro_angulo_z);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, CARRO);
         DrawVirtualObject("carro");
@@ -931,6 +938,58 @@ void LoadShader(const char* filename, GLuint shader_id)
     delete [] log;
 }
 
+// Função que carrega uma imagem para ser utilizada como textura
+void LoadTextureImage(const char* filename)
+{
+    printf("Carregando imagem \"%s\"... ", filename);
+
+    // Primeiro fazemos a leitura da imagem do disco
+    stbi_set_flip_vertically_on_load(true);
+    int width;
+    int height;
+    int channels;
+    unsigned char *data = stbi_load(filename, &width, &height, &channels, 3);
+
+    if ( data == NULL )
+    {
+        fprintf(stderr, "ERROR: Cannot open image file \"%s\".\n", filename);
+        std::exit(EXIT_FAILURE);
+    }
+
+    printf("OK (%dx%d).\n", width, height);
+
+    // Agora criamos objetos na GPU com OpenGL para armazenar a textura
+    GLuint texture_id;
+    GLuint sampler_id;
+    glGenTextures(1, &texture_id);
+    glGenSamplers(1, &sampler_id);
+
+    // Veja slides 95-96 do documento Aula_20_Mapeamento_de_Texturas.pdf
+    glSamplerParameteri(sampler_id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glSamplerParameteri(sampler_id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Parâmetros de amostragem da textura.
+    glSamplerParameteri(sampler_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glSamplerParameteri(sampler_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Agora enviamos a imagem lida do disco para a GPU
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+
+    GLuint textureunit = g_NumLoadedTextures;
+    glActiveTexture(GL_TEXTURE0 + textureunit);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindSampler(textureunit, sampler_id);
+
+    stbi_image_free(data);
+
+    g_NumLoadedTextures += 1;
+}
+
 // Função callback chamada sempre que o usuário movimentar o cursor do mouse em
 // cima da janela OpenGL.
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
@@ -1017,6 +1076,7 @@ void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
         g_CameraDistance = verysmallnumber;
 }
 
+
 // Definição da função que será chamada sempre que o usuário pressionar alguma
 // tecla do teclado. Veja http://www.glfw.org/docs/latest/input_guide.html#input_key
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
@@ -1055,6 +1115,25 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     if (key == GLFW_KEY_Z && action == GLFW_PRESS)
     {
         g_AngleZ += (mod & GLFW_MOD_SHIFT) ? -delta : delta;
+    }
+
+    if ((key == GLFW_KEY_W && action == GLFW_REPEAT) || glfwGetKey(window, GLFW_KEY_W))
+    {
+        carro_x += 0.1 * cos(carro_angulo_z);
+        carro_z -= 0.1 * sin(carro_angulo_z);
+    }
+    if ((key == GLFW_KEY_A && action == GLFW_REPEAT) || glfwGetKey(window, GLFW_KEY_A))
+    {
+        carro_angulo_z += 0.1;
+    }
+    if ((key == GLFW_KEY_S && action == GLFW_REPEAT) || glfwGetKey(window, GLFW_KEY_S))
+    {
+        carro_x -= 0.1 * cos(carro_angulo_z);
+        carro_z += 0.1 * sin(carro_angulo_z);
+    }
+    if ((key == GLFW_KEY_D && action == GLFW_REPEAT) || glfwGetKey(window, GLFW_KEY_D))
+    {
+        carro_angulo_z -= 0.1;
     }
 
     // Se o usuário apertar a tecla espaço, resetamos os ângulos de Euler para zero.
