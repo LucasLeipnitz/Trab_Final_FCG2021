@@ -74,6 +74,7 @@ GLuint LoadShader_Fragment(const char* filename); // Carrega um fragment shader
 void LoadShader(const char* filename, GLuint shader_id); // Função utilizada pelas duas acima
 GLuint CreateGpuProgram(GLuint vertex_shader_id, GLuint fragment_shader_id); // Cria um programa de GPU
 void PrintObjModelInfo(ObjModel*); // Função para debugging
+glm::vec4 CalculateTime(/*float tempo, float tempo_anterior*/);
 
 // Declaração de funções auxiliares para renderizar texto dentro da janela
 // OpenGL. Estas funções estão definidas no arquivo "textrendering.cpp".
@@ -181,9 +182,17 @@ GLuint g_NumLoadedTextures = 0;
 // que possamos calcular quanto que o mouse se movimentou entre dois instantes
 // de tempo. Utilizadas no callback CursorPosCallback() abaixo.
 double g_LastCursorPosX, g_LastCursorPosY;
+float carro_x = 0.5, carro_y = 0.0, carro_z = 0.0, carro_angulo_z = 4.7f;
 
+//Constantes
 #define CARRO 0
-float carro_x = 1.0, carro_y = 0.0, carro_z = 0.0, carro_angulo_z = 0.0;
+#define PLANE 1
+#define DESERT 2
+#define MOUNTAIN 3
+
+//Variáveis auxiliares
+bool sentido = true;
+float tempo_animacao = 0.0f;
 
 
 int main(int argc, char* argv[]){
@@ -264,11 +273,20 @@ int main(int argc, char* argv[]){
     //
     LoadShadersFromFiles();
 
-    // Carregamos duas imagens para serem utilizadas como textura
+    // Carregamos as imagens a sereme utiliziadas como textura
     //LoadTextureImage("../../data/tc-earth_daymap_surface.jpg");      // TextureImage0
     //LoadTextureImage("../../data/tc-earth_nightmap_citylights.gif"); // TextureImage1
-    LoadTextureImage("../../data/red.jpg"); // TextureImage0
+    LoadTextureImage("../../data/street1.png"); // TextureImage0
+    LoadTextureImage("../../data/red.jpg"); // TextureImage1
+    LoadTextureImage("../../data/desert.jpg"); // TextureImage2
+    LoadTextureImage("../../data/mountain.jpg"); // TextureImage3
 
+    //Carregamos o arquivo obj do plano
+    ObjModel planemodel("../../data/plane.obj");
+    ComputeNormals(&planemodel);
+    BuildTrianglesAndAddToVirtualScene(&planemodel);
+
+    //Carregamos o arquivo obj do carro
     ObjModel carromodel("../../data/carro.obj");
     ComputeNormals(&carromodel);
     BuildTrianglesAndAddToVirtualScene(&carromodel);
@@ -322,7 +340,7 @@ int main(int argc, char* argv[]){
 
         // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
         glm::vec4 camera_position_c  = glm::vec4(x,y,z,1.0f); // Ponto "c", centro da câmera
-        glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+        glm::vec4 camera_lookat_l    = glm::vec4(carro_x,carro_y,carro_z,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
         glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
         glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
@@ -336,7 +354,7 @@ int main(int argc, char* argv[]){
         // Note que, no sistema de coordenadas da câmera, os planos near e far
         // estão no sentido negativo!
         float nearplane = -0.1f;  // Posição do "near plane"
-        float farplane  = -10.0f; // Posição do "far plane"
+        float farplane  = -100.0f; // Posição do "far plane"
 
         if (g_UsePerspectiveProjection)
         {
@@ -366,6 +384,74 @@ int main(int argc, char* argv[]){
         // efetivamente aplicadas em todos os pontos.
         glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
         glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
+
+
+        int it_x,it_z;
+        float plane_x, plane_z;
+        // Desenhamos a estrada
+        plane_z = 0.0f;
+        for(it_z = 1; it_z < 100; it_z++){
+            model = Matrix_Translate(1.0f,0.1f,plane_z);
+            glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+            glUniform1i(object_id_uniform, PLANE);
+            DrawVirtualObject("plane");
+
+            model = Matrix_Translate(1.0f,0.1f,-plane_z);
+            glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+            glUniform1i(object_id_uniform, PLANE);
+            DrawVirtualObject("plane");
+
+            plane_z += 2.0f;
+        }
+
+        // Desenhamos o deserto
+        plane_z = 0.0f;
+        for(it_z = 1; it_z < 100; it_z++){
+            plane_x = 3.0f;
+            for(it_x = 1; it_x < 100; it_x++){
+                model = Matrix_Translate(plane_x,0.1f,plane_z);
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                glUniform1i(object_id_uniform, DESERT);
+                DrawVirtualObject("plane");
+
+                model = Matrix_Translate(plane_x,0.1f,-plane_z);
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                glUniform1i(object_id_uniform, DESERT);
+                DrawVirtualObject("plane");
+
+                plane_x += 2.0f;
+            }
+
+            plane_x = -1.0f;
+            for(it_x = 1; it_x < 100; it_x++){
+                model = Matrix_Translate(plane_x,0.1f,plane_z);
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                glUniform1i(object_id_uniform, DESERT);
+                DrawVirtualObject("plane");
+
+                model = Matrix_Translate(plane_x,0.1f,-plane_z);
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                glUniform1i(object_id_uniform, DESERT);
+                DrawVirtualObject("plane");
+
+                plane_x -= 2.0f;
+            }
+
+            plane_z += 2.0f;
+        }
+
+
+        //Desenhamos as montanhas
+        model = Matrix_Translate(4.0f,15.0f,15.0f) * Matrix_Rotate_X(-1.58f) * Matrix_Rotate_Y(-3.2f) * Matrix_Scale(25, 25, 25);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(object_id_uniform, MOUNTAIN);
+        DrawVirtualObject("plane");
+
+        /*glm::vec4 testee = CalculateTime();
+        model = Matrix_Translate(testee.x,testee.y,testee.z)* Matrix_Scale(0.01, 0.01, 0.01) * Matrix_Rotate_X(-1.58f) * Matrix_Rotate_Z(carro_angulo_z);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(object_id_uniform, CARRO);
+        DrawVirtualObject("carro");*/
 
         // Desenhamos o modelo do carro
         model = Matrix_Translate(carro_x,carro_y,carro_z)* Matrix_Scale(0.01, 0.01, 0.01) * Matrix_Rotate_X(-1.58f) * Matrix_Rotate_Z(carro_angulo_z);
@@ -412,6 +498,24 @@ int main(int argc, char* argv[]){
     //Fim do programa
     return 0;
 }
+
+glm::vec4 CalculateTime(/*float tempo, float tempo_anterior*/){
+    float tempo = (float)glfwGetTime();
+    glm::vec4 ponto_um = glm::vec4(1.0, 1.0, 1.0, 1.0), ponto_dois = glm::vec4(1.0, 10.0, 1.0, 1.0), ponto_tres = glm::vec4(1.0, 10.0, 10.0, 1.0), ponto_quatro = glm::vec4(1.0, 1.0, 10.0, 1.0);
+    if((fmod(tempo,1.0f)) < (fmod(tempo_animacao,1.0f))){
+        sentido = !sentido;
+    }
+    float t = 0.0;
+    if(!sentido){
+        t = 1 - (fmod(tempo,1.0f));
+    }
+    else{
+        t = fmod(tempo,1.0f);
+    }
+    tempo_animacao = tempo;
+    return ((float)pow((1 - t), 3) * ponto_um) + ((float)(3 * t * pow((1 - t), 2)) * ponto_dois) + ((float)(3 * pow(t, 2) * (1 - t)) * ponto_tres) + ((float)pow(t, 3) * ponto_quatro);
+}
+
 
 // Função que desenha um objeto armazenado em g_VirtualScene. Veja definição
 // dos objetos na função BuildTrianglesAndAddToVirtualScene().
@@ -771,6 +875,7 @@ void LoadShadersFromFiles()
     glUniform1i(glGetUniformLocation(program_id, "TextureImage0"), 0);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage1"), 1);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage2"), 2);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage3"), 3);
     glUseProgram(0);
 }
 

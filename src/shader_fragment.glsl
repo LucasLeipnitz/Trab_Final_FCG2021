@@ -19,8 +19,8 @@ uniform mat4 view;
 uniform mat4 projection;
 
 // Identificador que define qual objeto está sendo desenhado no momento
-#define CARRO 0
 uniform int object_id;
+
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
 uniform vec4 bbox_min;
@@ -30,6 +30,7 @@ uniform vec4 bbox_max;
 uniform sampler2D TextureImage0;
 uniform sampler2D TextureImage1;
 uniform sampler2D TextureImage2;
+uniform sampler2D TextureImage3;
 
 // O valor de saída ("out") de um Fragment Shader é a cor final do fragmento.
 out vec3 color;
@@ -37,6 +38,10 @@ out vec3 color;
 // Constantes
 #define M_PI   3.14159265358979323846
 #define M_PI_2 1.57079632679489661923
+#define CARRO 0
+#define PLANE 1
+#define DESERT 2
+#define MOUNTAIN 3
 
 void main()
 {
@@ -66,28 +71,63 @@ void main()
     float U = 0.0;
     float V = 0.0;
 
-    if ( object_id == CARRO)
+    if (object_id == CARRO)
     {
         // Coordenadas de textura do carro, computadas com projeção planar XY em COORDENADAS DO MODELO.
-
         vec4 bbox_center = (bbox_min + bbox_max) / 2.0;
-        vec4 position_sphere = bbox_center + (position_model - bbox_center)/length(position_model - bbox_center);
-        vec4 vector_sphere = position_sphere - bbox_center;
+        vec4 position_car = bbox_center + (position_model - bbox_center)/length(position_model - bbox_center);
+        vec4 vector_car = position_car - bbox_center;
 
-        float theta = atan(vector_sphere[0],vector_sphere[2]);
-        float phi = asin(vector_sphere[1]);
+        float theta = atan(vector_car[0],vector_car[2]);
+        float phi = asin(vector_car[1]);
 
         U = (theta + M_PI)/(2*M_PI);
         V = (phi + M_PI/2)/M_PI;
+
+        // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
+        vec3 Kd0 = texture(TextureImage1, vec2(U,V)).rgb;
+
+        // Equação de Iluminação
+        float lambert = max(0,dot(n,l));
+
+        color = Kd0 * (lambert + 0.01);
+    }else if (object_id == PLANE)
+    {
+        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+        U = texcoords.x;
+        V = texcoords.y;
+
+        // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
+        vec3 Kd0 = texture(TextureImage0, vec2(U,V)).rgb;
+
+        // Equação de Iluminação
+        float lambert = max(0,dot(n,l));
+
+        color = Kd0 * (lambert + 0.01);
+    }else if (object_id == DESERT)
+    {
+        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+        U = texcoords.x;
+        V = texcoords.y;
+
+        // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
+        vec3 Kd0 = texture(TextureImage2, vec2(U,V)).rgb;
+
+        // Equação de Iluminação
+        float lambert = max(0,dot(n,l));
+
+        color = Kd0 * (lambert + 0.01);
+    }else if (object_id == MOUNTAIN)
+    {
+        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+        U = texcoords.x;
+        V = texcoords.y;
+
+        // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
+        vec3 Kd0 = texture(TextureImage3, vec2(U,V)).rgb;
+
+        color = Kd0;
     }
-
-    // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
-    vec3 Kd0 = texture(TextureImage0, vec2(U,V)).rgb;
-
-    // Equação de Iluminação
-    float lambert = max(0,dot(n,l));
-
-    color = Kd0 * (lambert + 0.01);
 
     // Cor final com correção gamma, considerando monitor sRGB.
     // Veja https://en.wikipedia.org/w/index.php?title=Gamma_correction&oldid=751281772#Windows.2C_Mac.2C_sRGB_and_TV.2Fvideo_standard_gammas
