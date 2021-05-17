@@ -74,7 +74,7 @@ GLuint LoadShader_Fragment(const char* filename); // Carrega um fragment shader
 void LoadShader(const char* filename, GLuint shader_id); // Função utilizada pelas duas acima
 GLuint CreateGpuProgram(GLuint vertex_shader_id, GLuint fragment_shader_id); // Cria um programa de GPU
 void PrintObjModelInfo(ObjModel*); // Função para debugging
-glm::vec4 CalculateTime(/*float tempo, float tempo_anterior*/);
+glm::vec4 CalculaCurvaBezier(glm::vec4 ponto_um, glm::vec4 ponto_dois, glm::vec4 ponto_tres, glm::vec4 ponto_quatro);
 
 // Declaração de funções auxiliares para renderizar texto dentro da janela
 // OpenGL. Estas funções estão definidas no arquivo "textrendering.cpp".
@@ -189,6 +189,11 @@ float carro_x = 0.5, carro_y = 0.0, carro_z = 0.0, carro_angulo_z = 4.7f;
 #define PLANE 1
 #define DESERT 2
 #define MOUNTAIN 3
+#define CITY 4
+#define DESERT2 5
+#define CEU 6
+#define CAR2 7
+#define BUILDING1 8
 
 //Variáveis auxiliares
 bool sentido = true;
@@ -280,6 +285,11 @@ int main(int argc, char* argv[]){
     LoadTextureImage("../../data/red.jpg"); // TextureImage1
     LoadTextureImage("../../data/desert.jpg"); // TextureImage2
     LoadTextureImage("../../data/mountain.jpg"); // TextureImage3
+    LoadTextureImage("../../data/The_City_London.jpg"); // TextureImage4
+    LoadTextureImage("../../data/desert2.jpg"); // TextureImage5
+    LoadTextureImage("../../data/ceu.jpg"); // TextureImage6
+    LoadTextureImage("../../data/blue.png"); // TextureImage7
+    LoadTextureImage("../../data/predio.png"); // TextureImage8
 
     //Carregamos o arquivo obj do plano
     ObjModel planemodel("../../data/plane.obj");
@@ -290,6 +300,16 @@ int main(int argc, char* argv[]){
     ObjModel carromodel("../../data/carro.obj");
     ComputeNormals(&carromodel);
     BuildTrianglesAndAddToVirtualScene(&carromodel);
+
+    //Carregamos o arquivo obj do predio
+    ObjModel building1model("../../data/predio1.obj");
+    ComputeNormals(&building1model);
+    BuildTrianglesAndAddToVirtualScene(&building1model);
+
+    //Carregamos o arquivo obj do predio
+    ObjModel ovnimodel("../../data/ovni.obj");
+    ComputeNormals(&ovnimodel);
+    BuildTrianglesAndAddToVirtualScene(&ovnimodel);
 
     if ( argc > 1 )
     {
@@ -311,6 +331,7 @@ int main(int argc, char* argv[]){
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
     {
+        g_CameraDistance = 3.5f;
         // Aqui executamos as operações de renderização
 
         // Definimos a cor do "fundo" do framebuffer como branco.  Tal cor é
@@ -334,9 +355,9 @@ int main(int argc, char* argv[]){
         // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
         // e ScrollCallback().
         float r = g_CameraDistance;
-        float y = r*sin(g_CameraPhi);
-        float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
-        float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
+        float y = r*sin(g_CameraPhi) + carro_y;
+        float z = r*cos(g_CameraPhi)*cos(g_CameraTheta) + carro_z;
+        float x = r*cos(g_CameraPhi)*sin(g_CameraTheta) + carro_x;
 
         // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
         glm::vec4 camera_position_c  = glm::vec4(x,y,z,1.0f); // Ponto "c", centro da câmera
@@ -440,12 +461,35 @@ int main(int argc, char* argv[]){
             plane_z += 2.0f;
         }
 
+        model = Matrix_Translate(35.0f,-15.0f,-50.0f) * Matrix_Rotate_X(-1.58f) * Matrix_Rotate_Y(-3.15f) * Matrix_Rotate_Z(-1.5f) * Matrix_Scale(100, 100, 50);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(object_id_uniform, DESERT2);
+        DrawVirtualObject("plane");
+
+        model = Matrix_Translate(-50.0f,-15.0f,5.0f) * Matrix_Rotate_X(-4.5f) * Matrix_Rotate_Z(-1.5f) * Matrix_Scale(100, 100, 50);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(object_id_uniform, DESERT2);
+        DrawVirtualObject("plane");
+
 
         //Desenhamos as montanhas
         model = Matrix_Translate(4.0f,15.0f,15.0f) * Matrix_Rotate_X(-1.58f) * Matrix_Rotate_Y(-3.2f) * Matrix_Scale(25, 25, 25);
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, MOUNTAIN);
         DrawVirtualObject("plane");
+
+        //Desenhamos a cidade
+        model = Matrix_Translate(5.0f,50.0f,-50.0f) * Matrix_Rotate_X(-1.58f) * Matrix_Rotate_Y(-3.15f) * Matrix_Rotate_Z(-3.2f) * Matrix_Scale(50, 50, 50);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(object_id_uniform, CITY);
+        DrawVirtualObject("plane");
+
+        //Desenhamos o céu
+        model = Matrix_Translate(0.0f,50.0f,0.0f) * Matrix_Rotate_Z(-3.1f) * Matrix_Scale(50, 50, 50);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(object_id_uniform, CEU);
+        DrawVirtualObject("plane");
+
 
         /*glm::vec4 testee = CalculateTime();
         model = Matrix_Translate(testee.x,testee.y,testee.z)* Matrix_Scale(0.01, 0.01, 0.01) * Matrix_Rotate_X(-1.58f) * Matrix_Rotate_Z(carro_angulo_z);
@@ -458,6 +502,27 @@ int main(int argc, char* argv[]){
         glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(object_id_uniform, CARRO);
         DrawVirtualObject("carro");
+
+        // Desenhamos o modelo do carro 2
+        glm::vec4 car2bezier = CalculaCurvaBezier(glm::vec4(1.5, 0.0, -50.0, 1.0),glm::vec4(1.5, 0.0, 2.0, 1.0),glm::vec4(1.5, 0.0, 3.0, 1.0),glm::vec4(1.5, 0.0, 15.0, 1.0));
+        model = Matrix_Translate(car2bezier.x,car2bezier.y,car2bezier.z)* Matrix_Scale(0.01, 0.01, 0.01) * Matrix_Rotate_X(-1.58f) * Matrix_Rotate_Z(4.7f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(object_id_uniform, CAR2);
+        DrawVirtualObject("carro");
+
+        // Desenhamos o modelo do ovni
+        glm::vec4 ovnibezier = CalculaCurvaBezier(glm::vec4(30.5, 8.0, -50.0, 1.0),glm::vec4(-10.5, 8.0, 2.0, 1.0),glm::vec4(-10.5, 8.0, 3.0, 1.0),glm::vec4(30.5, 8.0, 15.0, 1.0));
+        model = Matrix_Translate(ovnibezier.x,ovnibezier.y,ovnibezier.z)* Matrix_Scale(0.001, 0.001, 0.001) * Matrix_Rotate_X(-1.58f) * Matrix_Rotate_Z(4.7f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(object_id_uniform, CAR2);
+        DrawVirtualObject("ovni");
+
+
+        // Desenhamos o modelo do prédio 1
+        model = Matrix_Translate(-0.2f,0.0f,-20.0f) * Matrix_Scale(0.01, 0.01, 0.01) * Matrix_Rotate_X(-1.58f);
+        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(object_id_uniform, BUILDING1);
+        DrawVirtualObject("building1model");
 
         // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
         // passamos por todos os sistemas de coordenadas armazenados nas
@@ -499,19 +564,18 @@ int main(int argc, char* argv[]){
     return 0;
 }
 
-glm::vec4 CalculateTime(/*float tempo, float tempo_anterior*/){
+glm::vec4 CalculaCurvaBezier(glm::vec4 ponto_um, glm::vec4 ponto_dois, glm::vec4 ponto_tres, glm::vec4 ponto_quatro){
     float tempo = (float)glfwGetTime();
-    glm::vec4 ponto_um = glm::vec4(1.0, 1.0, 1.0, 1.0), ponto_dois = glm::vec4(1.0, 10.0, 1.0, 1.0), ponto_tres = glm::vec4(1.0, 10.0, 10.0, 1.0), ponto_quatro = glm::vec4(1.0, 1.0, 10.0, 1.0);
-    if((fmod(tempo,1.0f)) < (fmod(tempo_animacao,1.0f))){
+    float velocidade = 10.0;
+    //glm::vec4 ponto_um = glm::vec4(1.0, 1.0, 1.0, 1.0), ponto_dois = glm::vec4(1.0, 10.0, 1.0, 1.0), ponto_tres = glm::vec4(1.0, 10.0, 10.0, 1.0), ponto_quatro = glm::vec4(1.0, 1.0, 10.0, 1.0);
+    if((fmod(tempo,velocidade)) < (fmod(tempo_animacao,velocidade))){
         sentido = !sentido;
     }
-    float t = 0.0;
+    float t = fmod(tempo,velocidade) / velocidade;
     if(!sentido){
-        t = 1 - (fmod(tempo,1.0f));
+        t = 1 - t;
     }
-    else{
-        t = fmod(tempo,1.0f);
-    }
+
     tempo_animacao = tempo;
     return ((float)pow((1 - t), 3) * ponto_um) + ((float)(3 * t * pow((1 - t), 2)) * ponto_dois) + ((float)(3 * pow(t, 2) * (1 - t)) * ponto_tres) + ((float)pow(t, 3) * ponto_quatro);
 }
@@ -876,6 +940,11 @@ void LoadShadersFromFiles()
     glUniform1i(glGetUniformLocation(program_id, "TextureImage1"), 1);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage2"), 2);
     glUniform1i(glGetUniformLocation(program_id, "TextureImage3"), 3);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage4"), 4);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage5"), 5);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage6"), 6);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage7"), 7);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage8"), 8);
     glUseProgram(0);
 }
 
@@ -1222,6 +1291,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
         g_AngleZ += (mod & GLFW_MOD_SHIFT) ? -delta : delta;
     }
 
+    //#movimentação#
     if ((key == GLFW_KEY_W && action == GLFW_REPEAT) || glfwGetKey(window, GLFW_KEY_W))
     {
         carro_x += 0.1 * cos(carro_angulo_z);
